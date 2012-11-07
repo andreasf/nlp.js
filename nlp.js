@@ -61,9 +61,11 @@ nlpjs.namespace = function(ns) {
 (function(){
     "use strict";
 
-    var PRUNE = false,
-        PRUNE_BELOW_DF = 0,
-        PRUNE_ABOVE_DF = 0.6;
+    var PRUNE = true,
+        PRUNE_BELOW_DF = 0.005,
+        PRUNE_ABOVE_DF = 1;
+        // TODO prune only if dimensions > x
+        // TODO move configuration into options object
 
     nlpjs.VectorDocumentModel = VectorDocumentModel;
     nlpjs.termOccurrences = termOccurrences;
@@ -77,9 +79,10 @@ nlpjs.namespace = function(ns) {
     function termOccurrences(document) {
         var i,
             counts = {},
-            term;
+            term,
+            dl = document.length;
 
-        for (i=0; i<document.length; i++) {
+        for (i=0; i<dl; i++) {
             term = document[i];
             if (counts[term] === undefined) {
                 counts[term] = 1;
@@ -117,9 +120,10 @@ nlpjs.namespace = function(ns) {
      */
     function documentOccurrences(corpus) {
         var i, occs, key, 
-            docOccs = {};
+            docOccs = {},
+            cl = corpus.length;
 
-        for (i=0; i<corpus.length; i++) {
+        for (i=0; i<cl; i++) {
             occs = termOccurrences(corpus[i]);
             for (key in occs) {
                 if (occs.hasOwnProperty(key)) {
@@ -153,16 +157,18 @@ nlpjs.namespace = function(ns) {
             dos = documentOccurrences(corpus);
         }
 
-        for (i=0; i<corpus.length; i++) {
-            for (j=0; j<corpus.length; j++) {
+        for (i=0; i<docnum; i++) {
+            for (j=0; j<docnum; j++) {
                 if (PRUNE) {
                     df = dos[corpus[i][j]] / docnum;
                     if (df < PRUNE_BELOW_DF || df > PRUNE_ABOVE_DF) {
                         continue;
                     }
                 }
-                wordToIndex[corpus[i][j]] = index;
-                index++;
+                if (wordToIndex[corpus[i][j]] === undefined) {
+                    wordToIndex[corpus[i][j]] = index;
+                    index++;
+                }
             }
         }
         this.wordToIndex = wordToIndex;
@@ -200,12 +206,17 @@ nlpjs.namespace = function(ns) {
             var i, 
                 t1 = 0,
                 t2 = 0,
-                t3 = 0;
+                t3 = 0,
+                al = a.length;
 
-            for (i=0; i<a.length; i++) {
+            for (i=0; i<al; i++) {
                 t1 += a[i] * b[i];
-                t2 += Math.pow(a[i], 2);
-                t3 += Math.pow(b[i], 2);
+                t2 += a[i] * a[i];
+                t3 += b[i] * b[i];
+            }
+            // avoid NaN
+            if (t2 === 0 || t3 === 0) {
+                return 0;
             }
             return t1 / (Math.sqrt(t2) * Math.sqrt(t3));
         }
@@ -218,10 +229,24 @@ nlpjs.namespace("tokenizers");
     "use strict";
 
     nlpjs.tokenizers.nonAlphanumeric = nonAlphanumeric;
+    nlpjs.tokenizers.nonLetter = nonLetter;
 
     function nonAlphanumeric(str) {
         var tokens, last;
         tokens = str.toLowerCase().split(/[^\w]+/);
+        if (tokens[0] === "") {
+            tokens = tokens.splice(1);
+        }
+        last = tokens.length - 1;
+        if (tokens[last] === "") {
+            tokens = tokens.splice(0, last);
+        }
+        return tokens;
+    }
+
+    function nonLetter(str) {
+        var tokens, last;
+        tokens = str.toLowerCase().split(/[^a-zäöüß]+/);
         if (tokens[0] === "") {
             tokens = tokens.splice(1);
         }
@@ -259,9 +284,10 @@ nlpjs.namespace("statistics");
          */
         score: function(term, document) {
             var i, 
-                count = 0;
+                count = 0,
+                dl = document.length;
 
-            for (i=0; i<document.length; i++) {
+            for (i=0; i<dl; i++) {
                 if (document[i] === term) {
                     count++;
                 }
@@ -283,14 +309,15 @@ nlpjs.namespace("statistics");
          */
         score: function(term, document) {
             var i,
-                count = 0;
+                count = 0,
+                dl = document.length;
 
-            for (i=0; i<document.length; i++) {
+            for (i=0; i<dl; i++) {
                 if (document[i] === term) {
                     count++;
                 }
             }
-            return count/document.length;
+            return count/dl;
         },
         scoreAll: termFrequencies
     };
