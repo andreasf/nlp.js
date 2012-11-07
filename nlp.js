@@ -5,7 +5,8 @@
  *
  * Includes
  * - a tokenizer
- * - a vector document model (occurrence, tf, tf*idf)
+ * - document statistics: term occurrence, tf, tf*idf
+ * - a vector space model for documents
  * - cosine similarity calculation
  * 
  * Usage:
@@ -48,7 +49,7 @@ nlpjs.namespace = function(ns) {
         parts = parts.slice(1);
     }   
     for (i=0; i<parts.length; i++) {
-        if (typeof(parent[parts[i]]) === 'undefined') {
+        if (parent[parts[i]] === undefined) {
             parent[parts[i]] = {}; 
         }
         parent = parent[parts[i]];
@@ -62,8 +63,7 @@ nlpjs.namespace = function(ns) {
 
     var PRUNE = false,
         PRUNE_BELOW_DF = 0,
-        PRUNE_ABOVE_DF = 0.6,
-        undefined;
+        PRUNE_ABOVE_DF = 0.6;
 
     nlpjs.VectorDocumentModel = VectorDocumentModel;
     nlpjs.termOccurrences = termOccurrences;
@@ -103,7 +103,9 @@ nlpjs.namespace = function(ns) {
         frequencies = termOccurrences(document);
         count = document.length;
         for (key in frequencies) {
-            frequencies[key] = frequencies[key]/count;
+            if (frequencies.hasOwnProperty(key)) {
+                frequencies[key] = frequencies[key]/count;
+            }
         }
         return frequencies;
     }
@@ -120,11 +122,13 @@ nlpjs.namespace = function(ns) {
         for (i=0; i<corpus.length; i++) {
             occs = termOccurrences(corpus[i]);
             for (key in occs) {
-                if (docOccs[key] === undefined) {
-                    docOccs[key] = 1;
-                } else {
-                    docOccs[key] += 1;
-                }
+                if (occs.hasOwnProperty(key)) {
+                    if (docOccs[key] === undefined) {
+                        docOccs[key] = 1;
+                    } else {
+                        docOccs[key] += 1;
+                    }
+                }    
             }
         }
         return docOccs;
@@ -179,8 +183,10 @@ nlpjs.namespace = function(ns) {
                 index, key;
 
             for (key in scores) {
-                index = this.wordToIndex[key];
-                doc[index] = scores[key];
+                if (scores.hasOwnProperty(key)) {
+                    index = this.wordToIndex[key];
+                    doc[index] = scores[key];
+                }
             }
             return doc;
         },
@@ -203,7 +209,7 @@ nlpjs.namespace = function(ns) {
             }
             return t1 / (Math.sqrt(t2) * Math.sqrt(t3));
         }
-    }
+    };
 }());
 
 
@@ -231,8 +237,7 @@ nlpjs.namespace("tokenizers");
 nlpjs.namespace("statistics");
 (function(){
     "use strict";
-    var undefined,
-        termOccurrences = nlpjs.termOccurrences,
+    var termOccurrences = nlpjs.termOccurrences,
         termFrequencies = nlpjs.termFrequencies;
 
     nlpjs.statistics.TermOccurrenceModel = TermOccurrenceModel;
@@ -264,7 +269,7 @@ nlpjs.namespace("statistics");
             return count;
         },
         scoreAll: termOccurrences
-    }
+    };
 
     
     function TermFrequencyModel(corpus) {
@@ -288,7 +293,7 @@ nlpjs.namespace("statistics");
             return count/document.length;
         },
         scoreAll: termFrequencies
-    }
+    };
 
 
     /**
@@ -300,7 +305,9 @@ nlpjs.namespace("statistics");
             key;
 
         for (key in docOccs) {
-            docOccs[key] = Math.log(corpus.length / docOccs[key]);
+            if (docOccs.hasOwnProperty(key)) {
+                docOccs[key] = Math.log(corpus.length / docOccs[key]);
+            }
         }
         this.idf = docOccs;
         this.corpusSize = corpus.length;
@@ -320,19 +327,23 @@ nlpjs.namespace("statistics");
 
             // get maximum to normalize tf
             for (key in tf) {
-                if (tf[key] > max) {
-                    max = tf[key];
+                if (tf.hasOwnProperty(key)) {
+                    if (tf[key] > max) {
+                        max = tf[key];
+                    }
                 }
             }
             for (key in tf) {
-                idf = this.idf[key];
-                if (idf === undefined) {
-                    idf = Math.log(this.corpusSize/1);
+                if (tf.hasOwnProperty(key)) {
+                    idf = this.idf[key];
+                    if (idf === undefined) {
+                        idf = Math.log(this.corpusSize/1);
+                    }
+                    tf[key] = (tf[key]/max) * idf;
                 }
-                tf[key] = (tf[key]/max) * idf;
             }
             return tf;
         }
-    }
+    };
 }());
 
