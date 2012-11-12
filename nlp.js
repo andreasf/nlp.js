@@ -65,7 +65,6 @@ nlpjs.namespace = function(ns) {
         PRUNE_BELOW_DF = 0.005,
         PRUNE_ABOVE_DF = 1;
         // TODO prune only if dimensions > x
-        // TODO move configuration into options object
 
     nlpjs.VectorDocumentModel = VectorDocumentModel;
     nlpjs.termOccurrences = termOccurrences;
@@ -151,14 +150,16 @@ nlpjs.namespace = function(ns) {
             dos,
             df,
             docnum = corpus.length,
-            index = 0;
+            index = 0,
+            doclen;
         
         if (PRUNE) {
             dos = documentOccurrences(corpus);
         }
 
         for (i=0; i<docnum; i++) {
-            for (j=0; j<docnum; j++) {
+            doclen = corpus[i].length;
+            for (j=0; j<doclen; j++) {
                 if (PRUNE) {
                     df = dos[corpus[i][j]] / docnum;
                     if (df < PRUNE_BELOW_DF || df > PRUNE_ABOVE_DF) {
